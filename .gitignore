@@ -3,4 +3,3 @@ node_modules/
 
 # Database
 prisma/*.db
-prisma/*.db-journal

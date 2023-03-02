@@ -11,9 +11,19 @@ CREATE TABLE "Employee" (
 );
 
 -- CreateTable
+CREATE TABLE "TimeTracking" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "employeeId" INTEGER NOT NULL,
+    "time" DATETIME NOT NULL,
+    "type" TEXT NOT NULL,
+    CONSTRAINT "TimeTracking_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "Project" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
@@ -31,3 +41,6 @@ CREATE TABLE "Task" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Employee_email_key" ON "Employee"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Project_code_key" ON "Project"("code");

@@ -10,21 +10,29 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Data model
 model Employee {
-  id        Int      @id @default(autoincrement())
+  id        Int            @id @default(autoincrement())
   name      String
-  email     String   @unique
-  phone     String
-  address   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  admin     Boolean  @default(false)
+  slackId   String         @unique
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  admin     Boolean        @default(false)
+  tracking  TimeTracking[]
+}
+
+// Type can either be "in", "out"
+model TimeTracking {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  time       DateTime
+  type       String
 }
 
 model Project {
   id          Int      @id @default(autoincrement())
   name        String
+  code        String   @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   loggedTasks Task[]
