@@ -1,6 +1,8 @@
 import { App } from '@slack/bolt';
 import { StringIndexed } from '@slack/bolt/dist/types/helpers';
 import { Employee } from '../models/Employee';
+import { getSlackUserInfo } from '../utils/getSlackUserInfo';
+import { respondError } from '../utils/respondError';
 
 export default {
   init: (app: App<StringIndexed>) => {
@@ -8,19 +10,7 @@ export default {
       await ack();
 
       try {
-        const { user } = await app.client.users.info({
-          token: process.env.SLACK_BOT_TOKEN,
-          user: payload.user_id,
-        });
-
-        // Slack user not found
-        if (!user?.id) {
-          await respond({
-            text: "Sorry, I couldn't find you in the Slack workspace...",
-          });
-          return;
-        }
-
+        const user = await getSlackUserInfo(app, payload.user_id);
         const employee = await new Employee().init(user.id);
 
         // gets type command (in, out)
@@ -54,7 +44,7 @@ export default {
         const hoursWorkedStr =
           employee.hoursWorkedToday < 1
             ? Math.round(employee.hoursWorkedToday * 60) + 'm'
-            : employee.hoursWorkedToday + 'h';
+            : employee.hoursWorkedToday.toFixed(1) + 'h';
 
         // if no errors, send success message
         await respond({
@@ -68,20 +58,7 @@ export default {
         });
         return;
       } catch (error) {
-        if (error instanceof Error) {
-          await respond({
-            blocks: [
-              {
-                type: 'section',
-                text: {
-                  type: 'mrkdwn',
-                  text: `Something went wrong...\n>${error.message}`,
-                },
-              },
-            ],
-          });
-          return;
-        }
+        await respondError(respond, error);
       }
     });
   },

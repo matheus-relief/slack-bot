@@ -1,9 +1,9 @@
 import { Employee as EmployeeT, TimeTracking } from '@prisma/client';
 import { prisma } from '../db';
 
-type ClockResponseI = {
-  type: 'in' | 'out';
-  workedHoursToday?: number;
+export type Shift = {
+  start: Date;
+  end: Date;
 };
 
 export class Employee {
@@ -15,7 +15,7 @@ export class Employee {
   private admin?: boolean;
   private tracking: TimeTracking[] = [];
 
-  /** Returns the employee's status (clocked in or out) */
+  /** @returns the employee's status (clocked in or out) */
   get status(): 'in' | 'out' {
     // if there is no tracking, the employee is out
     if (this.tracking.length === 0) return 'out';
@@ -27,9 +27,14 @@ export class Employee {
     return 'out';
   }
 
-  /** Returns the employee's last clock */
+  /** @returns the employee's last clock */
   get lastClock(): TimeTracking | null {
     return this.tracking[0] || null;
+  }
+
+  /** @returns whether the employee is an admin */
+  get isAdmin(): boolean {
+    return this.admin || false;
   }
 
   /** Returns the employee's worked hours today */
@@ -57,6 +62,11 @@ export class Employee {
         }
       });
     return workedHours / 1000 / 60 / 60;
+  }
+
+  /** Returns the employee's name */
+  get userName() {
+    return this.name || '';
   }
 
   public async init(employee: string | Partial<EmployeeT>) {
@@ -112,7 +122,7 @@ export class Employee {
       },
     });
 
-    if (!employee) throw new Error('Employee not found');
+    if (!employee) throw new Error('Employee not found on the database');
 
     this.id = employee.id;
     this.name = employee.name;
@@ -170,5 +180,31 @@ export class Employee {
 
     // add the new clock to the tracking
     this.tracking.unshift(newClock);
+  }
+
+  /**
+   * Parses the tracking and return an array of shifts
+   *
+   * @returns an array of shifts
+   */
+  public async getShifts(from: Date, to: Date) {
+    const shifts: Shift[] = [];
+    let lastClockIn: TimeTracking | null = null;
+    this.tracking
+      .filter((x) => x.time >= from && x.time < to)
+      .reverse()
+      .forEach((clock) => {
+        if (clock.type === 'in' && !lastClockIn) {
+          lastClockIn = clock;
+        }
+        if (clock.type === 'out' && lastClockIn) {
+          shifts.push({
+            start: lastClockIn.time,
+            end: clock.time,
+          });
+          lastClockIn = null;
+        }
+      });
+    return shifts;
   }
 }
