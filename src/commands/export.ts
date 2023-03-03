@@ -24,7 +24,6 @@ export default {
       try {
         const user = await getSlackUserInfo(app, payload.user_id);
         const employee = await new Employee().init(user.id);
-        console.log(user);
 
         if (!employee.isAdmin)
           throw new Error(
@@ -168,7 +167,7 @@ export default {
           // gets the user SlackID
           const userSlackId = body.user.id;
 
-          const user = await getSlackUserInfo(app, body.user.id);
+          const user = await getSlackUserInfo(app, userSlackId);
 
           const exportInfo = exportMap.get(userSlackId);
           if (!exportInfo || !exportInfo.start || !exportInfo.end)
