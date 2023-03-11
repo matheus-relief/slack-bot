@@ -121,23 +121,23 @@ export default {
       try {
         // Extract the text input values from the view
         const name = view.state.values.name.name.value;
-        const code = view.state.values.code.code.value;
+        const code = view.state.values.code.code.value?.toUpperCase();
 
         if (!code || !name)
           throw new Error(
             'Project code and name are required to create a project'
           );
 
-        // Check if there is already a project with this code or name
+        // Check if there is already a project with this code
         const project = await prisma.project.findFirst({
           where: {
-            OR: [{ code }, { name }],
+            code,
           },
         });
 
         if (project)
           throw new Error(
-            `There is a conflicting project.\nFound the following project with the same code or name: *${project.name}* (${project.code})`
+            `There is a conflicting project.\nFound the following project with the same code: *${project.name}* (${project.code})`
           );
 
         // Create the project

@@ -43,6 +43,7 @@ model Task {
   id          Int      @id @default(autoincrement())
   description String
   ticket      String?
+  date        DateTime
   hours       Float
   projectId   Int
   project     Project  @relation(fields: [projectId], references: [id])
