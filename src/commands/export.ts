@@ -23,12 +23,6 @@ export default {
 
       try {
         const user = await getSlackUserInfo(app, payload.user_id);
-        const employee = await new Employee().init(user.id);
-
-        if (!employee.isAdmin)
-          throw new Error(
-            "Sorry, you don't have permission to use this command"
-          );
 
         // Reset exportMap for this user
         exportMap.delete(user.id);
@@ -168,6 +162,7 @@ export default {
           const userSlackId = body.user.id;
 
           const user = await getSlackUserInfo(app, userSlackId);
+          const reqEmployee = await new Employee().init(userSlackId);
 
           const exportInfo = exportMap.get(userSlackId);
           if (!exportInfo || !exportInfo.start || !exportInfo.end)
@@ -183,6 +178,14 @@ export default {
           // If the action is user-selection-export, get the selected user
           if (actionId === 'user-selection-export') {
             const userSelectAction = body.actions[0] as UsersSelectAction;
+
+            if (
+              !reqEmployee.isAdmin &&
+              userSelectAction.selected_user !== userSlackId
+            )
+              throw new Error(
+                "You are not authorized to export another user's data"
+              );
             const employee = await new Employee().init(
               userSelectAction.selected_user
             );
@@ -192,6 +195,10 @@ export default {
               await employee.getShifts(startDate, endDate)
             );
           } else {
+            if (!reqEmployee.isAdmin)
+              throw new Error(
+                "You are not authorized to export all users' data"
+              );
             // get all employees
             const allEmployees = await prisma.employee.findMany({});
             for (const e of allEmployees) {

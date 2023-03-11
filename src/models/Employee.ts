@@ -1,4 +1,4 @@
-import { Employee as EmployeeT, TimeTracking } from '@prisma/client';
+import { Employee as EmployeeT, Task, TimeTracking } from '@prisma/client';
 import { prisma } from '../db';
 
 export type Shift = {
@@ -14,6 +14,7 @@ export class Employee {
   private updatedAt?: Date;
   private admin?: boolean;
   private tracking: TimeTracking[] = [];
+  private tasks: Task[] = [];
 
   /** @returns the employee's status (clocked in or out) */
   get status(): 'in' | 'out' {
@@ -37,7 +38,7 @@ export class Employee {
     return this.admin || false;
   }
 
-  /** Returns the employee's worked hours today */
+  /** @returns  the employee's worked hours today */
   get hoursWorkedToday() {
     // Get the current date at midnight
     const now = new Date();
@@ -64,9 +65,14 @@ export class Employee {
     return workedHours / 1000 / 60 / 60;
   }
 
-  /** Returns the employee's name */
+  /** @returns  the employee's name */
   get userName() {
     return this.name || '';
+  }
+
+  /** @returns  the employee's id */
+  get userId() {
+    return this.id || -1;
   }
 
   public async init(employee: string | Partial<EmployeeT>) {
@@ -90,7 +96,7 @@ export class Employee {
       this.createdAt = employee.createdAt;
       this.updatedAt = employee.updatedAt;
       this.admin = employee.admin;
-      await this.loadTracking();
+      await this.loadRelatedData();
       return this;
     }
 
@@ -110,7 +116,7 @@ export class Employee {
     this.createdAt = newEmployee.createdAt;
     this.updatedAt = newEmployee.updatedAt;
     this.admin = newEmployee.admin;
-    await this.loadTracking();
+    await this.loadRelatedData();
     return this;
   }
 
@@ -131,11 +137,12 @@ export class Employee {
     this.updatedAt = employee.updatedAt;
     this.admin = employee.admin;
 
-    await this.loadTracking();
+    await this.loadRelatedData();
   }
 
   /** Loads the employee's tracking from the db */
-  private async loadTracking() {
+  private async loadRelatedData() {
+    // load tracking
     const tracking = await prisma.timeTracking.findMany({
       where: {
         employeeId: this.id,
@@ -146,6 +153,18 @@ export class Employee {
     });
 
     this.tracking = tracking;
+
+    // load tasks
+    const tasks = await prisma.task.findMany({
+      where: {
+        employeeId: this.id,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    this.tasks = tasks;
   }
 
   public async clock(type: 'in' | 'out') {

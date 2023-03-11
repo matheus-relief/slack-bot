@@ -18,6 +18,7 @@ model Employee {
   updatedAt DateTime       @updatedAt
   admin     Boolean        @default(false)
   tracking  TimeTracking[]
+  tasks     Task[]
 }
 
 // Type can either be "in", "out"
@@ -41,9 +42,12 @@ model Project {
 model Task {
   id          Int      @id @default(autoincrement())
   description String
+  ticket      String?
   hours       Float
   projectId   Int
   project     Project  @relation(fields: [projectId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  employeeId  Int
+  employee    Employee @relation(fields: [employeeId], references: [id])
 }
