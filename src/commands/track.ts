@@ -3,6 +3,7 @@ import { App } from '@slack/bolt';
 import { StringIndexed } from '@slack/bolt/dist/types/helpers';
 import { prisma } from '../db';
 import { Employee } from '../models/Employee';
+import { saveTaskToOort } from '../oort';
 import { getSlackUserInfo } from '../utils/getSlackUserInfo';
 import { respondError, sendErrorMessage } from '../utils/respondError';
 
@@ -17,6 +18,8 @@ const validateAndParseTrackArgs = async (str: string) => {
     description?: string;
   };
 
+  // replace all multiple spaces with a single space
+  str = str.replace(/\s+/g, ' ');
   const args = str.split(' ');
 
   // if length is greater than 4, join all the arguments after the first 3 into the description
@@ -54,7 +57,7 @@ const validateAndParseTrackArgs = async (str: string) => {
     else if (args[1].toLocaleLowerCase() === 'yesterday')
       res.date = new Date(new Date().setDate(new Date().getDate() - 1));
     else {
-      const date = new Date(args[2]);
+      const date = new Date(args[1]);
       if (!isNaN(date.getTime())) {
         res.date = date;
       }
@@ -84,7 +87,7 @@ export default {
 
       if (payload.text === 'help') {
         await respond({
-          text: ">/track [project code] [date] [time spent] [description]\n\n*project code*: the project code (e.g. 'WHO')\n*date*: the date the ticket was done on (e.g. 'today', 'yesterday', '2021-01-01', '01/01/2021')\n*time spent*: the time spent on the ticket (e.g. '1.5', '2', '12')\n*description*: the description of the ticket, can also include ticket (e.g. 'Fixed bug', 'ABC-123:Fixed bug')\n\n>Example: /track WHO today 1.5 AB#12345:Fixed bug on map widget",
+          text: ">/track [project code] [date] [time spent] [description]\n\n*project code*: the project code (e.g. 'WHO')\n*date*: the date the ticket was done on (e.g. 'today', 'yesterday', '2021-01-01', '01/20/2021')\n*time spent*: the time spent on the ticket (e.g. '1.5', '2', '12')\n*description*: the description of the ticket, can also include ticket (e.g. 'Fixed bug', 'ABC-123:Fixed bug')\n\n>Example: /track WHO today 1.5 AB#12345:Fixed bug on map widget",
         });
         return;
       }
@@ -261,7 +264,7 @@ export default {
 
         if (!description) throw new Error('Description not provided');
         console.log('employee.userId', employee.userId);
-        await prisma.task.create({
+        const createdTask = await prisma.task.create({
           data: {
             description,
             hours,
@@ -271,10 +274,18 @@ export default {
           },
         });
 
+        saveTaskToOort(createdTask);
+
         await app.client.chat.postMessage({
           token: process.env.SLACK_BOT_TOKEN,
           channel: body.user.id,
-          text: `Tracking created for project *${project.name}*`,
+          text: `Tracking created for project *${project.name}*\n\n*Project:* ${
+            project.code
+          }\n*Ticket:* ${
+            ticket || 'N/A'
+          }\n*Description:* ${description}\n*Time spent:* ${time}\n*Date:* ${
+            view.state.values.date.date.selected_date
+          }`,
         });
       } catch (error) {
         await sendErrorMessage(app, body.user.id, error);
